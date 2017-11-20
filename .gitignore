@@ -13,3 +13,7 @@ pytorch/data/MNIST/raw/t10k-images-idx3-ubyte
 pytorch/data/MNIST/raw/t10k-labels-idx1-ubyte
 
 pytorch/data/MNIST/raw/train-images-idx3-ubyte
+
+tensorflow/MNIST_data/
+
+tensorflow/logs/

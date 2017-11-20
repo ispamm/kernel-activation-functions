@@ -2,7 +2,8 @@
 
 This repository contains several implementations of the kernel activation functions (KAFs) described in the following preprint:
 	
-	Scardapane, S., Van Vaerenbergh, S., Totaro, S. and Uncini, A., 2017. Kafnets: kernel-based non-parametric activation functions for neural networks. arXiv preprint arXiv:1707.04035.
+	Scardapane, S., Van Vaerenbergh, S., Totaro, S. and Uncini, A., 2017. Kafnets: kernel-based 
+	non-parametric activation functions for neural networks. arXiv preprint arXiv:1707.04035.
 	
 ## Available implementations
 

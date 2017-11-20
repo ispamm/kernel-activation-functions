@@ -8,9 +8,9 @@ This repository contains several implementations of the kernel activation functi
 
 We currently provide the following implementations:
 
-	* *PyTorch* implementation of KAF, 2D-KAF, both for feedforward and convolutional networks.
-	* *TensorFlow* implementation of KAF, only for feedforward networks.
-	* *Autograd* implementation of KAF, 2D-KAF, only for feedforward networks.
+* [PyTorch](/pytorch): KAF and 2D-KAF, both for feedforward and convolutional networks.
+* [TensorFlow](/tensorflow/): only KAF for feedforward networks.
+* [Autograd](/autograd/): KAF and 2D-KAF, only for feedforward networks.
 	
 More information for each implementation is given in the corresponding folder. Most of the code should be easy to plug-in in other architectures.
 

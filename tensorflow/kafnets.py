@@ -9,12 +9,13 @@ class KAFNet(object):
     KAF layer using kernel activation functions.
     """
 
-    def __init__(self, obs_dim, n_class=1, h_size=4, n_layers=2, gamma=1., kernel='rbf', dict_size=20, boundary=3.0,
-                 beta=1e-5, lr=1e-3):
+    def __init__(self, obs_dim, n_class=1, h_size=4, n_layers=2, layer_type="linear", kernel='rbf', gamma=1.,
+                 dict_size=20, boundary=3.0, beta=1e-5, lr=1e-3):
         self.D = tf.linspace(start=-boundary, stop=boundary, num=dict_size)
         self.scope = kernel
         self._init_ph(obs_dim=obs_dim, n_class=n_class)
-        self._init_graph(n_class=n_class, h_size=h_size, n_layers=n_layers, gamma=gamma, dict_size=dict_size)
+        self._init_graph(h_size=h_size, n_layers=n_layers, layer_type=layer_type, kernel=kernel, n_class=n_class,
+                         gamma=gamma)
         self._train_op(lr=lr, beta=beta)
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -49,17 +50,21 @@ class KAFNet(object):
     def _get_params(self):
         return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
 
-    def _init_graph(self, h_size, n_layers, n_class=1, gamma=1., dict_size=20):
-        h = self.x
+    def _init_graph(self, h_size, n_layers, layer_type="linear", kernel="rbf", n_class=1, gamma=1.):
+        h = tf.reshape(self.x, shape=(-1, 28, 28, 1)) if layer_type == "conv" else self.x
         self.alphas = []
         with tf.variable_scope(self.scope):
             for idx in range(n_layers):
-                alpha = tf.get_variable('alpha_{}'.format(idx), shape=(h_size, dict_size),
-                                        initializer=tf.random_normal_initializer(stddev=0.1))
+                if layer_type == "conv":
+                    out = tf.layers.conv2d(inputs=h, filters=h_size, kernel_size=5, strides=(2, 2),
+                                           activation=None, name="conv_{}".format(idx),
+                                           kernel_initializer=tf.random_normal_initializer(stddev=.1))
+                else:
+                    out = tf.layers.dense(inputs=h, units=h_size, activation=None, name='h_{}'.format(idx),
+                                          kernel_initializer=tf.random_normal_initializer(stddev=0.1))
+                h, alpha = self.kaf(linear=out, name="kaf{}".format(idx), D=self.D, gamma=gamma, kernel=kernel)
                 self.alphas.append(alpha)
-                linear = tf.layers.dense(inputs=h, units=h_size, activation=None, name='h_{}'.format(idx),
-                                         kernel_initializer=tf.random_normal_initializer(stddev=0.1))
-                h = self.kaf(linear=linear, D=self.D, alpha=alpha, gamma=gamma)
+            h = tf.contrib.layers.flatten(h) if layer_type == "conv" else h
 
             self.output = tf.layers.dense(inputs=h, units=n_class, activation=None, name='output',
                                           kernel_initializer=tf.random_normal_initializer(stddev=0.1))
@@ -67,12 +72,37 @@ class KAFNet(object):
 
     @staticmethod
     def gauss_kernel(x, D, gamma=1.):
-        gauss_kernel = tf.exp(
-            - gamma * tf.square(tf.reshape(x, (-1, tf.shape(x)[1], 1)) - tf.reshape(D, (1, 1, -1))))
+
+        x = tf.expand_dims(x, axis=-1)
+        if x.get_shape().ndims < 4:
+            # x = tf.reshape(x, (-1, tf.shape(x)[1], 1))
+            # TODO there should be a better expression for this
+            D = tf.reshape(D, (1, 1, -1))
+        else:
+            D = tf.reshape(D, (1, 1, 1, 1, -1))
+
+        gauss_kernel = tf.exp(- gamma * tf.square(x - D))
         return gauss_kernel
 
     @staticmethod
-    def kaf(linear, kernel='rbf', D=None, alpha=None, gamma=1.):
+    def gauss_kernel2D(x, Dx, Dy, gamma=1.):
+
+        h_size = (x.get_shape()[-1].value) // 2
+
+        x = tf.expand_dims(x, axis=-1)
+        if x.get_shape().ndims < 4:
+            Dx = tf.reshape(Dx, (1, 1, -1))
+            Dy = tf.reshape(Dy, (1, 1, -1))
+            x1, x2 = x[:, :h_size], x[:, h_size:]
+        else:
+            Dy = tf.reshape(Dy, (1, 1, 1, 1, -1))
+            Dx = tf.reshape(Dx, (1, 1, 1, 1, -1))
+            x1, x2 = x[:, :, :, :h_size], x[:, :, :, h_size:]
+        gauss_kernel = tf.exp(-gamma * tf.square(x1 - Dx)) + tf.exp(- gamma * tf.square(x2 - Dy))
+        return gauss_kernel
+
+    @staticmethod
+    def kaf(linear, name, kernel='rbf', D=None, gamma=1., ):
 
         if D is None:
             D = tf.linspace(start=-2., stop=2., num=20)
@@ -80,11 +110,19 @@ class KAFNet(object):
         with tf.variable_scope('kaf'):
             if kernel == 'rbf':
                 K = KAFNet.gauss_kernel(linear, D, gamma=gamma)
+                alpha = tf.get_variable(name, shape=D.get_shape()[0],
+                                        initializer=tf.random_normal_initializer(stddev=0.1))
+            elif kernel == 'rbf2d':
+                Dx, Dy = tf.meshgrid(D, D)
+                K = KAFNet.gauss_kernel2D(linear, Dx, Dy, gamma=gamma)
+
+                alpha = tf.get_variable(name,
+                                        shape=(1, linear.get_shape()[-1] // 2, D.get_shape()[0] * D.get_shape()[0]),
+                                        initializer=tf.random_normal_initializer(stddev=0.1))
             else:
                 raise NotImplementedError()
-
-            alpha = tf.reshape(alpha, (1, linear.get_shape()[1].value, tf.shape(D)[0]))
-        return tf.reduce_sum(tf.multiply(K, alpha), axis=2)
+            act = tf.reduce_sum(tf.multiply(K, alpha), axis=-1)
+        return (act, alpha)
 
     @staticmethod
     def compute_accuracy_op(y, y_hat):

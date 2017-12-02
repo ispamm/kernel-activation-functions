@@ -12,7 +12,8 @@ from kafnets import KAFNet
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
 
 # Initialize the KafNet
-kafnet = KAFNet(obs_dim=784, n_class=10, h_size=64, n_layers=2, gamma=1.)
+kafnet = KAFNet(obs_dim=784, n_class=10, h_size=64, n_layers=2, layer_type = "linear",kernel = "rbf2d", gamma=1.,dict_size = 10)
+
 
 # General parameters
 BATCH_SIZE = 64

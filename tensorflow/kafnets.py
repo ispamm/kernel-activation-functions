@@ -110,7 +110,7 @@ class KAFNet(object):
         with tf.variable_scope('kaf'):
             if kernel == 'rbf':
                 K = KAFNet.gauss_kernel(linear, D, gamma=gamma)
-                alpha = tf.get_variable(name, shape=D.get_shape()[0],
+                alpha = tf.get_variable(name, shape=(1, linear.get_shape()[-1], D.get_shape()[0]),
                                         initializer=tf.random_normal_initializer(stddev=0.1))
             elif kernel == 'rbf2d':
                 Dx, Dy = tf.meshgrid(D, D)

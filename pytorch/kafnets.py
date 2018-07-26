@@ -37,7 +37,7 @@ class KAF(Module):
         if init_fcn is not None:
             # Initialization with kernel ridge regression
             K = np.exp(- self.gamma*(self.dict_numpy - self.dict_numpy.T) ** 2)
-            self.alpha_init = np.linalg.solve(K + 1e-5, self.init_fcn(self.dict_numpy)).reshape(-1)
+            self.alpha_init = np.linalg.solve(K + 1e-5*np.eye(self.num_parameters), self.init_fcn(self.dict_numpy)).reshape(-1)
         else:
             # Random initialization
             self.alpha_init = None

@@ -8,7 +8,6 @@ from sklearn import datasets, preprocessing, model_selection
 
 # Custom imports
 from kafnets import init_kaf_nn, predict_kaf_nn
-from kafnets import init_2d_kaf_nn, predict_2d_kaf_nn
 
 # Extends this example:
 # https://github.com/HIPS/autograd/blob/master/examples/neural_net.py
@@ -31,10 +30,6 @@ y = preprocessing.MinMaxScaler(feature_range=(-0.9, +0.9)).fit_transform(data['t
 # Initialize KAF neural network
 w, info = init_kaf_nn(layers)
 predict_fcn = lambda w, inputs: predict_kaf_nn(w, inputs, info)
-
-# Initialize 2D-KAF neural network (uncomment if needed)
-# w, info = init_2d_kaf_nn(layers)
-# predict_fcn = lambda w, inputs: predict_2d_kaf_nn(w, inputs, info)
 
 # Loss function (MSE)
 def loss_fcn(params, inputs, targets):

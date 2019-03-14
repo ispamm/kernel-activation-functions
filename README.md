@@ -10,14 +10,11 @@ This repository contains several implementations of the kernel activation functi
 
 We currently provide the following stable implementations:
 
-* [PyTorch](/pytorch): feedforward and convolutional networks, three kernels (Gaussian/ReLU/Softplus), with random initialization or kernel ridge regression.
-* [Keras](/keras): same as the PyTorch implementation.
-* [Autograd](/autograd): only for feedforward networks with Gaussian kernel and random initialization.
+* [PyTorch](/pytorch): feedforward and convolutional layers, three kernels (Gaussian/ReLU/Softplus), with random initialization or kernel ridge regression.
+* [Keras](/keras): same functionalities as the PyTorch implementation.
+* [TensorFlow](/tensorflow/): similar to the Keras implementation, but we use the internal tf.keras.Layer and the eager execution in the demos.
+* [Autograd](/autograd): only feedforward layers with a Gaussian kernel and random initialization.
 
-The following implementations are not stable and are under development:
-
-* [TensorFlow](/tensorflow/): feedforward and convolutional networks.
-	
 More information for each implementation is given in the corresponding folder. The code should be relatively easy to plug-in in other architectures or projects.
 
 ## What is a KAF?

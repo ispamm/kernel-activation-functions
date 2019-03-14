@@ -1,9 +1,9 @@
-## Kernel activation functions (Keras)
+## Kernel activation functions (TensorFlow)
 
 In the *kafnets* module you can find the modules for defining KAF layers, both for feedforward networks and convolutional networks (using the flag 'conv' during initialization). 
-The code has two demos to showcase the modules using the Keras Sequential model.
+The code has two demos to showcase the modules using TensorFlow layers.
 
 ## Requirements
 
-* keras = 2.2.4
+* tensorflow = 1.1.13
 * numpy = 1.15.4

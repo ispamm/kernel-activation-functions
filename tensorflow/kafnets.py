@@ -1,131 +1,124 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
+from tensorflow.keras.layers import Layer
 import tensorflow as tf
 
-
-class KAFNet(object):
+class KAF(Layer):
+    """ Implementation of the kernel activation function.
+    
+    Parameters
+    ----------
+    num_parameters: int
+        Size of the layer (number of neurons).
+    D: int, optional
+        Size of the dictionary for each neuron. Default to 20.
+    conv: bool, optional
+        True if this is a convolutive layer, False for a feedforward layer. Default to False.
+    boundary: float, optional
+        Dictionary elements are sampled uniformly in [-boundary, boundary]. Default to 4.0.
+    init_fcn: None or func, optional
+        If None, elements are initialized randomly. Otherwise, elements are initialized to approximate given function.
+    kernel: {'gauss', 'relu', 'softplus'}, optional
+        Kernel function to be used. Defaults to 'gaussian'.
+    
+    Example
+    ----------
+    Neural network with one hidden layer with KAF nonlinearities:
+        
+    >>> net = Sequential([Dense(10), KAF(10), Dense(10, 1)])
+    
+    References
+    ----------
+    [1] Scardapane, S., Van Vaerenbergh, S., Totaro, S. and Uncini, A., 2019. 
+        Kafnets: kernel-based non-parametric activation functions for neural networks. 
+        Neural Networks, 110, pp. 19-32.
+    [2] Marra, G., Zanca, D., Betti, A. and Gori, M., 2018. 
+        Learning Neuron Non-Linearities with Kernel-Based Deep Neural Networks. 
+        arXiv preprint arXiv:1807.06302.
     """
-    KAF layer using kernel activation functions.
-    """
 
-    def __init__(self, obs_dim, n_class=1, h_size=4, n_layers=2, layer_type="linear", kernel='rbf', gamma=1.,
-                 dict_size=20, boundary=3.0, beta=1e-5, lr=1e-3):
-        self.D = tf.linspace(start=-boundary, stop=boundary, num=dict_size)
-        self.scope = kernel
-        self._init_ph(obs_dim=obs_dim, n_class=n_class)
-        self._init_graph(h_size=h_size, n_layers=n_layers, layer_type=layer_type, kernel=kernel, n_class=n_class,
-                         gamma=gamma)
-        self._train_op(lr=lr, beta=beta)
-        self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
-
-    def train(self, x, y):
-        _, loss = self.sess.run([self.train_op, self.loss], feed_dict={self.x: x, self.y: y})
-        return loss
-
-    def predict(self, x):
-        if np.ndim(x) < 1:
-            x = [x]
-        y_hat = self.sess.run(self.y_hat, feed_dict={self.x: x})
-        return y_hat
-
-    def score(self, x, y):
-        accuracy = self.sess.run(self.compute_accuracy_op(y=self.y, y_hat=self.y_hat),
-                                 feed_dict={self.x: x, self.y: y})
-        return accuracy
-
-    def _init_ph(self, obs_dim, n_class):
-        self.x = tf.placeholder(tf.float32, shape=(None, obs_dim), name='X')
-        self.y = tf.placeholder(tf.float32, shape=(None, n_class), name='Y')
-
-    def _train_op(self, lr=1e-3, beta=1e-5):
-        l2_loss = beta * tf.add_n([tf.nn.l2_loss(t=alpha) for alpha in self.alphas])
-        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.output, labels=self.y) + l2_loss)
-        # self.loss = .5 * tf.reduce_mean(tf.square(self.y - self.y_hat), name='mse')
-        optim = tf.train.AdamOptimizer(learning_rate=lr)
-        grads = tf.gradients(self.loss, self._get_params())
-        self.train_op = optim.apply_gradients(zip(grads, self._get_params()))
-
-    def _get_params(self):
-        return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.scope)
-
-    def _init_graph(self, h_size, n_layers, layer_type="linear", kernel="rbf", n_class=1, gamma=1.):
-        h = tf.reshape(self.x, shape=(-1, 28, 28, 1)) if layer_type == "conv" else self.x
-        self.alphas = []
-        with tf.variable_scope(self.scope):
-            for idx in range(n_layers):
-                if layer_type == "conv":
-                    out = tf.layers.conv2d(inputs=h, filters=h_size, kernel_size=5, strides=(2, 2),
-                                           activation=None, name="conv_{}".format(idx),
-                                           kernel_initializer=tf.random_normal_initializer(stddev=.1))
-                else:
-                    out = tf.layers.dense(inputs=h, units=h_size, activation=None, name='h_{}'.format(idx),
-                                          kernel_initializer=tf.random_normal_initializer(stddev=0.1))
-                h, alpha = self.kaf(linear=out, name="kaf{}".format(idx), D=self.D, gamma=gamma, kernel=kernel)
-                self.alphas.append(alpha)
-            h = tf.contrib.layers.flatten(h) if layer_type == "conv" else h
-
-            self.output = tf.layers.dense(inputs=h, units=n_class, activation=None, name='output',
-                                          kernel_initializer=tf.random_normal_initializer(stddev=0.1))
-            self.y_hat = tf.argmax(tf.nn.softmax(self.output), axis=1)
-
-    @staticmethod
-    def gauss_kernel(x, D, gamma=1.):
-
-        x = tf.expand_dims(x, axis=-1)
-        if x.get_shape().ndims < 4:
-            # x = tf.reshape(x, (-1, tf.shape(x)[1], 1))
-            # TODO there should be a better expression for this
-            D = tf.reshape(D, (1, 1, -1))
+    def __init__(self, num_parameters, D=20, boundary=3.0, conv=False, init_fcn=None, kernel='gaussian', **kwargs):
+        self.num_parameters = num_parameters
+        self.D = D
+        self.boundary = boundary
+        self.init_fcn = init_fcn
+        self.conv = conv
+        if self.conv:
+            self.unsqueeze_dim = 4
         else:
-            D = tf.reshape(D, (1, 1, 1, 1, -1))
+            self.unsqueeze_dim = 2
+        self.kernel = kernel
+        if not (kernel in ['gaussian', 'relu', 'softplus']):
+            raise ValueError('Kernel not recognized (must be {gaussian, relu, softplus})')
+        super().__init__(**kwargs)
+    
+    def build(self, input_shape):
 
-        gauss_kernel = tf.exp(- gamma * tf.square(x - D))
-        return gauss_kernel
-
-    @staticmethod
-    def gauss_kernel2D(x, Dx, Dy, gamma=1.):
-
-        h_size = (x.get_shape()[-1].value) // 2
-
-        x = tf.expand_dims(x, axis=-1)
-        if x.get_shape().ndims < 4:
-            Dx = tf.reshape(Dx, (1, 1, -1))
-            Dy = tf.reshape(Dy, (1, 1, -1))
-            x1, x2 = x[:, :h_size], x[:, h_size:]
+        # Initialize the fixed dictionary
+        d = np.linspace(-self.boundary, self.boundary, self.D).astype(np.float32).reshape(-1, 1)
+        
+        if self.conv:
+            self.dict = self.add_weight(name='dict', 
+                                      shape=(1, 1, 1, 1, self.D),
+                                      initializer='uniform',
+                                      trainable=False)
+            tf.assign(self.dict, d.reshape(1, 1, 1, 1, -1))
         else:
-            Dy = tf.reshape(Dy, (1, 1, 1, 1, -1))
-            Dx = tf.reshape(Dx, (1, 1, 1, 1, -1))
-            x1, x2 = x[:, :, :, :h_size], x[:, :, :, h_size:]
-        gauss_kernel = tf.exp(-gamma * tf.square(x1 - Dx)) + tf.exp(- gamma * tf.square(x2 - Dy))
-        return gauss_kernel
+            self.dict = self.add_weight(name='dict', 
+                                      shape=(1, 1, self.D),
+                                      initializer='uniform',
+                                      trainable=False)
+            tf.assign(self.dict, d.reshape(1, 1, -1))
+        
+        if self.kernel == 'gaussian':
+            self.kernel_fcn = self.gaussian_kernel
+            # Rule of thumb for gamma
+            interval = (d[1] - d[0])
+            sigma = 2 * interval  # empirically chosen
+            self.gamma = 0.5 / np.square(sigma)
+        elif self.kernel == 'softplus':
+            self.kernel_fcn = self.softplus_kernel
+        else:
+            self.kernel_fcn = self.relu_kernel
+            
+        
+        # Mixing coefficients
+        if self.conv:
+            self.alpha = self.add_weight(name='alpha', 
+                                         shape=(1, 1, 1, self.num_parameters, self.D),
+                                         initializer='normal',
+                                         trainable=True)
+        else:
+            self.alpha = self.add_weight(name='alpha', 
+                                         shape=(1, self.num_parameters, self.D),
+                                         initializer='normal',
+                                         trainable=True)
 
-    @staticmethod
-    def kaf(linear, name, kernel='rbf', D=None, gamma=1., ):
-
-        if D is None:
-            D = tf.linspace(start=-2., stop=2., num=20)
-
-        with tf.variable_scope('kaf'):
-            if kernel == 'rbf':
-                K = KAFNet.gauss_kernel(linear, D, gamma=gamma)
-                alpha = tf.get_variable(name, shape=(1, linear.get_shape()[-1], D.get_shape()[0]),
-                                        initializer=tf.random_normal_initializer(stddev=0.1))
-            elif kernel == 'rbf2d':
-                Dx, Dy = tf.meshgrid(D, D)
-                K = KAFNet.gauss_kernel2D(linear, Dx, Dy, gamma=gamma)
-
-                alpha = tf.get_variable(name,
-                                        shape=(1, linear.get_shape()[-1] // 2, D.get_shape()[0] * D.get_shape()[0]),
-                                        initializer=tf.random_normal_initializer(stddev=0.1))
+        # Optional initialization with kernel ridge regression
+        if self.init_fcn is not None:
+            if self.kernel == 'gaussian':
+              kernel_matrix = np.exp(- self.gamma*(d - d.T) ** 2)
+            elif self.kernel == 'softplus':
+              kernel_matrix = np.log(np.exp(d - d.T) + 1.0)
             else:
-                raise NotImplementedError()
-            act = tf.reduce_sum(tf.multiply(K, alpha), axis=-1)
-        return (act, alpha)
-
-    @staticmethod
-    def compute_accuracy_op(y, y_hat):
-        correct_predictions = tf.equal(tf.argmax(y, axis=1), y_hat)
-        accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name="accuracy")
-        return accuracy
+              raise ValueError('Cannot perform kernel ridge regression with ReLU kernel (singular matrix)')
+            
+            alpha_init = np.linalg.solve(kernel_matrix + 1e-5*np.eye(self.D), self.init_fcn(d)).reshape(-1)
+            if self.conv:
+                tf.assign(self.alpha, np.repeat(alpha_init.reshape(1, 1, 1, 1, -1), self.num_parameters, axis=3))
+            else:
+                tf.assign(self.alpha, np.repeat(alpha_init.reshape(1, 1, -1), self.num_parameters, axis=1))
+        
+        super(KAF, self).build(input_shape)
+        
+    def gaussian_kernel(self, x):
+        return tf.exp(- self.gamma * (tf.expand_dims(x, axis=self.unsqueeze_dim) - self.dict) ** 2.0)
+        
+    def softplus_kernel(self, x):
+        return tf.softplus(tf.expand_dims(x, axis=self.unsqueeze_dim) - self.dict)
+    
+    def relu_kernel(self, x):
+        return tf.relu(tf.expand_dims(x, axis=self.unsqueeze_dim) - self.dict)
+    
+    def call(self, x):
+        kernel_matrix = self.kernel_fcn(x)
+        return tf.reduce_sum(kernel_matrix * self.alpha, axis=self.unsqueeze_dim)

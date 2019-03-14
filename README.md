@@ -25,13 +25,13 @@ More information for each implementation is given in the corresponding folder. T
 Most neural networks work by interleaving linear projections and simple (fixed) activation functions, like the ReLU function:
 
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?\dpi{150}&space;\large&space;g(s)&space;=&space;\max\left(0,&space;s\right&space;)" title="\large g(s) = \max\left(0, s\right )" />
+<img src="eq1.png" />
 </p>
 
 A KAF is instead a non-parametric activation function defined as a one-dimensional kernel approximator:
 
 <p align="center">
-<img src="https://latex.codecogs.com/svg.latex?g(s)&space;=&space;\sum_{i=1}^D&space;\alpha_i&space;\kappa\left(s,&space;d_i\right)&space;\,," title="g(s) = \sum_{i=1}^D \alpha_i \kappa\left(s, d_i\right) \,," />
+<img src="eq2.png" />
 </p>
 
 where:

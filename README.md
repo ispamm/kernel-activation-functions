@@ -11,7 +11,8 @@ This repository contains several implementations of the kernel activation functi
 We currently provide the following stable implementations:
 
 * [PyTorch](/pytorch): feedforward and convolutional networks, three kernels (Gaussian/ReLU/Softplus), with random initialization or kernel ridge regression.
-* [Autograd](https://github.com/HIPS/autograd): only for feedforward networks with Gaussian kernel and random initialization.
+* [Keras](/keras): same as the PyTorch implementation.
+* [Autograd](/autograd): only for feedforward networks with Gaussian kernel and random initialization.
 
 The following implementations are not stable and are under development:
 

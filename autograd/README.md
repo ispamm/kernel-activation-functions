@@ -10,4 +10,4 @@ For classification, consider changing the final layer to a standard softmax.
 ## Requirements
 
 * autograd = 1.2.
-* scikit-learn 0.20.1 (for demo_kaf_regression.py)
+* scikit-learn = 0.20.1 (for demo_kaf_regression.py)

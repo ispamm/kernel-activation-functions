@@ -39,6 +39,16 @@ where:
 
 In addition, the linear coefficients can be initialized using kernel ridge regression to behave similarly to a known function in the beginning of the optimization process.
 
+<p align="center">
+<img src="kernel_activation_functions.png"/><br/>
+Fig. 1. Examples of kernel activation functions learned on the Sensorless data set. The KAF after initialization is shown with a dashed red, while the final KAF is shown with a solid green. The distribution of activation values after training is shown as a reference with a light blue.
+</p>
+
+<p align="center">
+<img src="kernel_activation_functions_2D.png"/><br/>
+Fig. 2. Examples of two-dimensional kernel activation functions learned on the Sensorless data set.
+</p>
+
 ## Contributing
 
 If you have an implementation for a different framework, or an enhanced version of the current code, feel free to contribute to the repository. For any issues related to the code you can use the issue tracker from GitHub.

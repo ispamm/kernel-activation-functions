@@ -41,7 +41,7 @@ In addition, the linear coefficients can be initialized using kernel ridge regre
 
 <p align="center">
 <img src="kernel_activation_functions.png"/><br/>
-Fig. 1. Examples of kernel activation functions learned on the Sensorless data set. The KAF after initialization is shown with a dashed red, while the final KAF is shown with a solid green. The distribution of activation values after training is shown as a reference with a light blue.
+Fig. 1. Examples of kernel activation functions learned on the Sensorless data set. The KAF after initialization is shown with a dashed red, while the final KAF is shown with a solid green. As a reference, the distribution of activation values after training is shown in light blue.
 </p>
 
 <p align="center">

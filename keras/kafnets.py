@@ -122,3 +122,12 @@ class KAF(Layer):
     def call(self, x):
         kernel_matrix = self.kernel_fcn(x)
         return K.sum(kernel_matrix * self.alpha, axis=self.unsqueeze_dim)
+    
+    def get_config(self):
+      return {'num_parameters': self.num_parameters,
+             'D': self.D,
+             'boundary': self.boundary,
+             'conv': self.conv,
+             'init_fcn': self.init_fcn,
+             'kernel': self.kernel
+      }
